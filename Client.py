@@ -10,7 +10,7 @@ def listen(s: socket.socket):
         print('\r\r' + msg.decode('utf-8') + '\n' + f'вы: ', end='')
 
 
-def connect(host: str = '192.168.0.107', port: int = 3000):
+def connect(host: str = '127.0.0.1', port: int = 3000):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     s.connect((host, port))

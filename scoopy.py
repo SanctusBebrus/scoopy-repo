@@ -154,8 +154,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def sendMessages(self):
         message = self.messageLine.toPlainText()
         if message:
-            self.sock.send(f'{self.name}: {message}'.encode('utf-8'))
-            self.listWidget.addItem('вы: ' + message)
+            self.sock.send(f'{self.name}: {message}'.strip().encode('utf-8'))
+            self.listWidget.addItem(str('вы: ' + message).strip())
             self.messageLine.setText('')
             return message
         else:

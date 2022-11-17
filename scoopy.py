@@ -239,7 +239,7 @@ class EmojiDialog(QtWidgets.QDialog, Ui_Dialog_Emoji):
     def returnEmoji(self):
         global Emoji
         if self.sender().text() != ':)' and self.sender().text():
-            Emoji += self.sender().text()
+            ex.lineEdit.setText(ex.lineEdit.text() + self.sender().text())
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -278,7 +278,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         emoji = EmojiDialog()
         emoji.show()
         emoji.exec_()
-        self.lineEdit.setText(self.lineEdit.text() + Emoji)
         Emoji = ''
 
     def setName(self):

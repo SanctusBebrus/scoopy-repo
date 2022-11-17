@@ -248,7 +248,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.name = ''
         self.InitUI()
-        self.connect_to_server('localhost', 3001)
+        self.connect_to_server('127.0.0.1', 3001)
         self.listen()
 
     def connect_to_server(self, host: str, port: int) -> None:

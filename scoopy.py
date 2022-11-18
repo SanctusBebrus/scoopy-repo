@@ -330,6 +330,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         emoji.show()
         emoji.exec_()
         Emoji = ''
+    
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Return:
+            self.sendMessages()
+        elif event.key() == QtCore.Qt.Key_Escape:
+            self.close()
 
 
 if __name__ == "__main__":

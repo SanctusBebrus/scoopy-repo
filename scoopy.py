@@ -1,8 +1,9 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
-from emoji import emojize
 import socket
 import threading
+import speech_recognition
+from emoji import emojize
 
 IsFirstTimeOpened = True
 USERNAME = ''
@@ -108,36 +109,17 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+        self.voice_to_text_button = QtWidgets.QPushButton('сказать', self)
+        self.voice_to_text_button.setGeometry(926, 620, 65, 35)
+        self.voice_to_text_button.setStyleSheet("background-color: green")
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "SCOOPy"))
         self.toolButton.setText(_translate("MainWindow", ":)"))
-        self.sendMessageButton.setText(_translate("MainWindow", "SEND"))
+        self.sendMessageButton.setText(_translate("MainWindow", "отправить"))
         self.titleLabel.setText(_translate("MainWindow", "SCOOPy"))
         self.userLabel.setText(_translate("MainWindow", "USER"))
-
-
-class Dialog(QtWidgets.QDialog, Ui_Dialog):
-    def __init__(self):
-        super().__init__()
-        self.setupUi(self)
-        self.InitDialog()
-
-    def InitDialog(self):
-        self.confirmButton.clicked.connect(self.confirm)
-        self.cancelButton.clicked.connect(self.cancel)
-
-    def confirm(self):
-        global USERNAME
-        if self.userNameLine.text():
-            USERNAME = self.userNameLine.text()
-            self.close()
-        else:
-            msg = QtWidgets.QMessageBox(self)
-            msg.about(self, 'Ошибка', 'Поле с именем пусто')
-
-    def cancel(self):
-        exit()
 
 
 class Ui_Dialog_Emoji(object):
@@ -242,23 +224,38 @@ class EmojiDialog(QtWidgets.QDialog, Ui_Dialog_Emoji):
             ex.lineEdit.setText(ex.lineEdit.text() + self.sender().text())
 
 
+class Dialog(QtWidgets.QDialog, Ui_Dialog):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        self.InitDialog()
+
+    def InitDialog(self):
+        self.confirmButton.clicked.connect(self.confirm)
+        self.cancelButton.clicked.connect(self.cancel)
+
+    def confirm(self):
+        global USERNAME
+        if self.userNameLine.text():
+            USERNAME = self.userNameLine.text()
+            self.close()
+        else:
+            msg = QtWidgets.QMessageBox(self)
+            msg.about(self, 'Ошибка', 'Поле с именем пусто')
+
+    def cancel(self):
+        exit()
+
+
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
         self.name = ''
         self.InitUI()
-        self.connect_to_server('127.0.0.1', 3001)
+        self.connect_to_server('localhost', 55511)
         self.listen()
-
-    def connect_to_server(self, host: str, port: int) -> None:
-        self.host, self.port = host, port
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.connect((self.host, self.port))
-        self.sock.send(f'__join{self.name}'.encode('utf-8'))
-
-    def listen(self):
-        threading.Thread(target=self.receiveMessages, daemon=True).start()
+        self.voice_recognizer = speech_recognition.Recognizer()
 
     def InitUI(self):
         global IsFirstTimeOpened
@@ -270,15 +267,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.setName()
         self.userLabel.setText(self.name)
-        self.toolButton.clicked.connect(self.chooseEmoji)
-        self.sendMessageButton.clicked.connect(self.sendMessages)
 
-    def chooseEmoji(self):
-        global Emoji
-        emoji = EmojiDialog()
-        emoji.show()
-        emoji.exec_()
-        Emoji = ''
+        self.sendMessageButton.clicked.connect(self.sendMessages)
+        self.toolButton.clicked.connect(self.chooseEmoji)
+        self.voice_to_text_button.clicked.connect(self.voice_btn_clicked)
+
+    def connect_to_server(self, host: str, port: int) -> None:
+        self.host, self.port = host, port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.connect((self.host, self.port))
+        self.sock.send(f'__join{self.name}'.encode('utf-8'))
+
+    def listen(self):
+        threading.Thread(target=self.receiveMessages, daemon=True).start()
 
     def setName(self):
         global USERNAME
@@ -298,6 +299,37 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         while True:
             msg = self.sock.recv(UDP_MAX_SIZE)
             self.listWidget.addItem(str(msg.decode('utf-8')))
+
+    def voice_to_text(self) -> str:
+        try:
+            with speech_recognition.Microphone(device_index=1) as source:
+                self.voice_recognizer.adjust_for_ambient_noise(source)
+                audio = self.voice_recognizer.listen(source)
+            text = self.voice_recognizer.recognize_google(audio, language='ru-RU').lower()
+        except speech_recognition.UnknownValueError:
+            return ''
+        return text
+
+    def change_voice_btn_color(self, color: str) -> None:
+        self.voice_to_text_button.setStyleSheet(f"background-color: {color}")
+
+    def voice_btn_pushed_thread(self):
+        self.voice_to_text_button.setEnabled(False)
+        self.change_voice_btn_color('red')
+        voice_text = self.voice_to_text()
+        self.lineEdit.setText(f'{self.lineEdit.text()} {voice_text}'.rstrip())
+        self.voice_to_text_button.setEnabled(True)
+        self.change_voice_btn_color('green')
+
+    def voice_btn_clicked(self):
+        threading.Thread(target=self.voice_btn_pushed_thread).start()
+
+    def chooseEmoji(self):
+        global Emoji
+        emoji = EmojiDialog()
+        emoji.show()
+        emoji.exec_()
+        Emoji = ''
 
 
 if __name__ == "__main__":
